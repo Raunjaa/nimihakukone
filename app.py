@@ -53,7 +53,7 @@ def search():
         if invalid_columns:
             return jsonify({"error": f"Invalid column(s): {', '.join(invalid_columns)}"}), 400
 
-        filtered_data = data[data["Kunta"].isin(selected_kuntas)] if selected_kuntas else data
+        filtered_data = data[data["kunta"].isin(selected_kuntas)] if selected_kuntas else data
 
         results = {"Sumea": [], "Alkaa merkkijonolla": [], "Sisältää merkkijonon": []}
 
