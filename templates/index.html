@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hakusivusto</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .checkbox-group, .kunta-selection, .search-columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .checkbox-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .fuzzy-threshold {
+            width: 60px;
+            margin-top: 5px;
+        }
+        .submit-button {
+            font-size: 18px;
+            padding: 12px 24px;
+            margin-top: 20px;
+        }
+        .footer {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hakusivusto pääkaupunkiseudun kaavanimistä</h1>
+
+    <form action="/search" method="post" class="search-container">
+
+        <!-- Municipality Selection -->
+        <h3>Valitse kunnat:</h3>
+        <div class="kunta-selection">
+            {% for kunta in kuntas %}
+                <div class="checkbox-item">
+                    <input type="checkbox" name="kunta" value="{{ kunta }}" id="kunta_{{ kunta }}" checked>
+                    <label for="kunta_{{ kunta }}">{{ kunta }}</label>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Search Methods -->
+        <h3>Hakumetodit (voit valita useita):</h3>
+        <div class="checkbox-group">
+            <div class="checkbox-item">
+                <input type="checkbox" name="search_method" value="Sumea" id="Sumea">
+                <label for="Sumea">Sumea</label>
+                <input type="number" name="threshold" id="threshold" value="80" min="0" max="100" class="fuzzy-threshold">
+                <label for="threshold">Sumean haun raja-arvo</label>
+            </div>
+
+            <div class="checkbox-item">
+                <input type="checkbox" name="search_method" value="Alkaa merkkijonolla" id="Alkaa">
+                <label for="Alkaa">Alkaa merkeillä</label>
+            </div>
+
+            <div class="checkbox-item">
+                <input type="checkbox" name="search_method" value="Sisältää merkkijonon" id="Sisältää">
+                <label for="Sisältää">Sisältää merkit</label>
+            </div>
+        </div>
+
+        <!-- Search Column Selection -->
+        <h3>Hakuun valittavat nimet:</h3>
+        <div class="search-columns">
+            <div class="checkbox-item">
+                <input type="checkbox" name="search_column" value="suomi" id="suomi" checked>
+                <label for="suomi">suomi</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" name="search_column" value="ruotsi" id="ruotsi" checked>
+                <label for="ruotsi">ruotsi</label>
+            </div>
+        </div>
+
+        <!-- Search Query -->
+        <label for="search_query">Haettava merkkijono:</label>
+        <input type="text" name="search_query" id="search_query" required style="margin-top: 5px;"><br><br>
+
+        <!-- Show Map Option -->
+        <div style="margin-bottom: 20px;">
+            <input type="checkbox" name="show_map" id="show_map">
+            <label for="show_map">Näytä tulokset kartalla</label>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="submit-button">Hae</button>
+
+        <!-- Footer -->
+        <div class="footer">
+            <h4>Nimitaulukko: <a href="https://github.com/Raunjaa/pk-seudun_nimet/tree/main" target="_blank">Githubissa</a></h4>
+            <h4>Tehty Jaakon toimesta</h4>
+        </div>
+
+    </form>
+</body>
+</html>

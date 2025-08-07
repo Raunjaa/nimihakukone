@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hakutulokset</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        table {
+            width: 90%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+            cursor: pointer;
+        }
+        .sort-icon {
+            font-size: 12px;
+            margin-left: 5px;
+            color: #888;
+        }
+        .map-container {
+            width: 90%;
+            margin: 20px auto;
+        }
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+    {% if show_map %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    {% endif %}
+    <script>
+        function sortTable(tableId, columnIndex) {
+            const table = document.getElementById(tableId);
+            const rows = Array.from(table.rows).slice(1);
+            const ascending = table.getAttribute("data-sort-asc") === "true";
+
+            rows.sort((a, b) => {
+                const valA = a.cells[columnIndex].innerText;
+                const valB = b.cells[columnIndex].innerText;
+                return ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+
+            table.setAttribute("data-sort-asc", !ascending);
+            rows.forEach(row => table.appendChild(row));
+        }
+    </script>
+</head>
+<body>
+    <h1>Hakutulokset</h1>
+
+    {% for method, method_results in results.items() %}
+        {% if method_results %}
+            <h2>{{ method }} ({{ method_results|length }} tulosta)</h2>
+            <table id="table_{{ method }}" data-sort-asc="true">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('table_{{ method }}', 0)">Nimi <span class="sort-icon">🔽</span></th>
+                        <th onclick="sortTable('table_{{ method }}', 1)">Kunta <span class="sort-icon">🔽</span></th>
+                        <th onclick="sortTable('table_{{ method }}', 2)">Kieli <span class="sort-icon">🔽</span></th>
+                        {% if method == "Sumea" %}
+                            <th onclick="sortTable('table_{{ method }}', 3)">Samankaltaisuus <span class="sort-icon">🔽</span></th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in method_results %}
+                        <tr>
+                            <td>{{ result["Nimi"] }}</td>
+                            <td>{{ result["Kunta"] }}</td>
+                            <td>{{ result["Language"] }}</td>
+                            {% if method == "Sumea" %}
+                                <td>{{ result["Similarity Score"] }}</td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endfor %}
+
+    {% if not results %}
+        <p>Haetuilla metodeilla ei löytynyt mitään.</p>
+    {% endif %}
+
+    {% if show_map %}
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const results = {{ results | tojson | safe }};
+                const map = L.map('map').setView([60.3, 25.0], 11);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                const uniqueLocations = new Map();
+
+                for (const method in results) {
+                    results[method].forEach(result => {
+                        if ("x" in result && "y" in result) {
+                            const key = result.x + "_" + result.y;
+                            if (!uniqueLocations.has(key)) {
+                                uniqueLocations.set(key, []);
+                            }
+                            uniqueLocations.get(key).push(result);
+                        }
+                    });
+                }
+
+                uniqueLocations.forEach((entries, key) => {
+                    const lat = entries[0].y;
+                    const lon = entries[0].x;
+                    const popupContent = entries.map(e => 
+                        `<strong>${e.Nimi}</strong> (${e.Language})<br><em>${e.Kunta}</em>`
+                    ).join('<hr>');
+                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                });
+            });
+        </script>
+    {% endif %}
+
+    <br>
+    <a href="/">Takaisin hakuun</a>
+</body>
+</html>
