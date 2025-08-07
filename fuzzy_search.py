@@ -72,10 +72,10 @@ def fuzzy_search(data, column_name, query, threshold=80):
                 'y': lat   # Transformed Latitude
             }
         
-            if column_name == "suomi":
+            if column_name == "nimi_suomi":
                 result["Language"] = "suomi"
             elif column_name == "ruotsi":
-                result["Language"] = "ruotsi"
+                result["Language"] = "nimi_ruotsi"
             results.append(result)
     return results
 
