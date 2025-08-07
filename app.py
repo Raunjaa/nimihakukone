@@ -30,7 +30,7 @@ def transform_coords(x, y):
 @app.route('/')
 def index():
     unique_kuntas = sorted(data["kunta"].dropna().unique())
-    columns = ["suomi", "ruotsi"]
+    columns = ["nimi_suomi", "nimi_ruotsi"]
     return render_template('index.html', columns=columns, kuntas=unique_kuntas)
 
 @app.route('/search', methods=['POST'])
