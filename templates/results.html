@@ -78,7 +78,7 @@
                     {% for result in method_results %}
                         <tr>
                             <td>{{ result["Nimi"] }}</td>
-                            <td>{{ result["Kunta"] }}</td>
+                            <td>{{ result["kunta"] }}</td>
                             <td>{{ result["Language"] }}</td>
                             {% if method == "Sumea" %}
                                 <td>{{ result["Similarity Score"] }}</td>
@@ -98,35 +98,41 @@
         <div class="map-container">
             <div id="map"></div>
         </div>
+        
         <script>
             document.addEventListener("DOMContentLoaded", function () {
-                const results = {{ results | tojson | safe }};
-                const map = L.map('map').setView([60.3, 25.0], 11);
+                var results = {{ results | tojson | safe }};
+                console.log(results);
 
+                var map = L.map('map').setView([60.3, 25.0], 11);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 18,
+                    maxZoom: 19,
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(map);
 
-                const uniqueLocations = new Map();
+                let uniqueLocations = new Map();
+                let count = 0;
+                const maxMarkers = 1000; // change this limit if needed
 
                 for (const method in results) {
                     results[method].forEach(result => {
-                        if ("x" in result && "y" in result) {
-                            const key = result.x + "_" + result.y;
+                        if (count >= maxMarkers) return;
+                        if ("lat" in result && "lon" in result) {
+                            const key = result.lat + "_" + result.lon;
                             if (!uniqueLocations.has(key)) {
                                 uniqueLocations.set(key, []);
                             }
                             uniqueLocations.get(key).push(result);
+                            count++;
                         }
                     });
                 }
 
                 uniqueLocations.forEach((entries, key) => {
-                    const lat = entries[0].y;
-                    const lon = entries[0].x;
-                    const popupContent = entries.map(e => 
-                        `<strong>${e.Nimi}</strong> (${e.Language})<br><em>${e.Kunta}</em>`
+                    const lat = entries[0].lat;
+                    const lon = entries[0].lon;
+                    const popupContent = entries.map(e =>
+                        `<strong>${e.Nimi}</strong> (${e.Language})<br><em>${e.kunta}</em>`
                     ).join('<hr>');
                     L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
                 });
@@ -137,4 +143,9 @@
     <br>
     <a href="/">Takaisin hakuun</a>
 </body>
+<script>
+  // Always runs, even when show_map is false
+  const __results = {{ results | tojson | safe }};
+  console.log('RESULTS (always-print):', __results);
+</script>
 </html>

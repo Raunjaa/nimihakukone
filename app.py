@@ -3,6 +3,7 @@ import pandas as pd
 import json
 from fuzzy_search import fuzzy_search, startswith_search, contains_search
 from pyproj import Transformer
+import math
 
 #create flask_app
 
@@ -19,7 +20,7 @@ except Exception as e:
     exit()
 
 # Coordinate transformer: ETRS-TM35FIN (3067) -> WGS84 (4326)
-transformer = Transformer.from_crs("EPSG:3067", "EPSG:4326", always_xy=True)
+transformer = Transformer.from_crs("EPSG:3879", "EPSG:4326", always_xy=True)
 
 def transform_coords(x, y):
     try:
@@ -60,31 +61,20 @@ def search():
         for column in search_columns:
             if 'Sumea' in search_methods:
                 fuzzy_results = fuzzy_search(filtered_data, column, search_query, threshold)
-                for r in fuzzy_results:
-                    lon, lat = transform_coords(r.get("x"), r.get("y"))
-                    r["lon"] = lon
-                    r["lat"] = lat
                 results["Sumea"].extend(fuzzy_results)
 
             if 'Alkaa merkkijonolla' in search_methods:
                 startswith_results = startswith_search(filtered_data, column, search_query)
-                for r in startswith_results:
-                    lon, lat = transform_coords(r.get("x"), r.get("y"))
-                    r["lon"] = lon
-                    r["lat"] = lat
                 results["Alkaa merkkijonolla"].extend(startswith_results)
 
             if 'Sisältää merkkijonon' in search_methods:
                 contains_results = contains_search(filtered_data, column, search_query)
-                for r in contains_results:
-                    lon, lat = transform_coords(r.get("x"), r.get("y"))
-                    r["lon"] = lon
-                    r["lat"] = lat
                 results["Sisältää merkkijonon"].extend(contains_results)
 
         return render_template("results.html", results=results, show_map=show_map)
 
     except Exception as e:
+        print("Available columns in data:", data.columns.tolist())
         return jsonify({"errori lopussa": str(e)}), 500
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ from difflib import SequenceMatcher
 from pyproj import Transformer
 
 
-transformer = Transformer.from_crs("EPSG:3067", "EPSG:4326", always_xy=True)
+transformer = Transformer.from_crs("EPSG:3879", "EPSG:4326", always_xy=True)
 
 def transform_coordinates(x, y):
     lon, lat = transformer.transform(x, y)
@@ -66,22 +66,23 @@ def fuzzy_search(data, column_name, query, threshold=80):
             #results.append({
             result = {
                 "Nimi": name,
-                "Kunta": data.iloc[index]["Kunta"],  # Get corresponding municipality
+                "kunta": data.iloc[index]["kunta"],  # Get corresponding municipality 
                 "Similarity Score": round(score,1),
-                'x': lon,  # Transformed Longitude
-                'y': lat   # Transformed Latitude
+                'lon': lon,  # Transformed Longitude
+                'lat': lat   # Transformed Latitude
             }
         
             if column_name == "nimi_suomi":
                 result["Language"] = "suomi"
-            elif column_name == "ruotsi":
-                result["Language"] = "nimi_ruotsi"
+            elif column_name == "nimi_ruotsi":
+                result["Language"] = "ruotsi"
             results.append(result)
     return results
 
 
 def startswith_search(data, column_name, query):
     column_data_original = data[column_name]
+    column_data_original=column_data_original.astype(str)
     column_data_lower = column_data_original.astype(str).str.lower()
     query_lower = query.lower()
 
@@ -90,18 +91,18 @@ def startswith_search(data, column_name, query):
     for index, original_value in column_data_original.items():
         if original_value.lower().startswith(query_lower):
             x, y = data['x'].iloc[index], data['y'].iloc[index]
+            
             # Transform coordinates if they are valid (not NaN)
             if pd.notna(x) and pd.notna(y):
                 lon, lat = transformer.transform(x, y)  # Convert to EPSG:4326
             else:
                 lon, lat = None, None  # Keep None if no coordinates exist
-
             results.append({
                 'Nimi': original_value,
-                'Kunta': data['Kunta'].iloc[index],
-                'Language': "suomi" if column_name == "suomi" else "ruotsi",
-                'x': lon,  # Transformed Longitude
-                'y': lat   # Transformed Latitude
+                'kunta': data['kunta'].iloc[index],
+                'Language': "suomi" if column_name == "nimi_suomi" else "ruotsi",
+                'lon': lon,  # Transformed Longitude
+                'lat': lat   # Transformed Latitude
             })
         
     
@@ -114,14 +115,20 @@ def contains_search(data, column_name, query):
     """
     # Ensure case-insensitive search
     column_data_original = data[column_name]
+    column_data_original=column_data_original.astype(str)
     column_data_lower = column_data_original.astype(str).str.lower()
     query_lower = query.lower()
-
-    # Find matching rows
-    matching_rows = data[column_data_lower.str.contains(query_lower, na=False)].copy()
     results=[]
-    for index in range(len(matching_rows)):
+    # Find matching rows
+    for index, original_value in column_data_original.items():
+        #if original_value.lower().contains(query_lower, na=False):
+        if query_lower in original_value.lower():
             x, y = data['x'].iloc[index], data['y'].iloc[index]
+    
+    #matching_rows = data[column_data_lower.str.contains(query_lower, na=False)].copy()
+    #results=[]
+    #for index in range(len(matching_rows)):
+    #        x, y = data['x'].iloc[index], data['y'].iloc[index]
             # Transform coordinates if they are valid (not NaN)
             if pd.notna(x) and pd.notna(y):
                 lon, lat = transformer.transform(x, y)  # Convert to EPSG:4326
@@ -129,11 +136,11 @@ def contains_search(data, column_name, query):
                 lon, lat = None, None  # Keep None if no coordinates exist
 
             results.append({
-                'Nimi': matching_rows[column_name].iloc[index],
-                'Kunta': data['Kunta'].iloc[index],
-                'Language': "suomi" if column_name == "suomi" else "ruotsi",
-                'x': lon,  # Transformed Longitude
-                'y': lat   # Transformed Latitude
+                'Nimi': original_value,
+                'kunta': data['kunta'].iloc[index],
+                'Language': "suomi" if column_name == "nimi_suomi" else "ruotsi",
+                'lon': lon,  # Transformed Longitude
+                'lat': lat   # Transformed Latitude
             })
 
     return results
