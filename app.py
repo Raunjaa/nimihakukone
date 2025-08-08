@@ -3,7 +3,6 @@ import pandas as pd
 import json
 from fuzzy_search import fuzzy_search, startswith_search, contains_search
 from pyproj import Transformer
-import math
 
 #create flask_app
 
