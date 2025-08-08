@@ -4,4 +4,3 @@ fuzzywuzzy
 python-Levenshtein
 gunicorn
 pyproj
-math
