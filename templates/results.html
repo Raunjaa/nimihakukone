@@ -36,6 +36,10 @@
             height: 600px;
             width: 100%;
         }
+        #map.flash {
+            box-shadow: 0 0 0 4px rgba(255, 200, 0, 0.6) inset;
+            transition: box-shadow 0.6s ease;
+        }
     </style>
     {% if show_map %}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -77,7 +81,16 @@
                 <tbody>
                     {% for result in method_results %}
                         <tr>
-                            <td>{{ result["Nimi"] }}</td>
+                            <td>
+                                {% if show_map and result.get("lat") and result.get("lon") %}
+                                    <a href="#map"
+                                    onclick="focusMarkerAndScroll('{{ ('%.6f'|format(result['lat'])) }}_{{ ('%.6f'|format(result['lon'])) }}'); return false;">
+                                    {{ result["Nimi"] }}
+                                    </a>
+                                {% else %}
+                                    {{ result["Nimi"] }}
+                                {% endif %}
+                                </td>
                             <td>{{ result["kunta"] }}</td>
                             <td>{{ result["Language"] }}</td>
                             {% if method == "Sumea" %}
@@ -95,49 +108,116 @@
     {% endif %}
 
     {% if show_map %}
-        <div class="map-container">
-            <div id="map"></div>
-        </div>
-        
-        <script>
-            document.addEventListener("DOMContentLoaded", function () {
-                var results = {{ results | tojson | safe }};
-                console.log(results);
+        <!-- Leaflet assets -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-                var map = L.map('map').setView([60.3, 25.0], 11);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
+    <style>
+    /* optional highlight when jumping to map */
+    #map.flash {
+        box-shadow: 0 0 0 4px rgba(255, 200, 0, 0.6) inset;
+        transition: box-shadow 0.6s ease;
+    }
+    </style>
 
-                let uniqueLocations = new Map();
-                let count = 0;
-                const maxMarkers = 1000; // change this limit if needed
+    <div class="map-container">
+    <div id="map" style="height:600px;width:100%"></div>
+    </div>
 
-                for (const method in results) {
-                    results[method].forEach(result => {
-                        if (count >= maxMarkers) return;
-                        if ("lat" in result && "lon" in result) {
-                            const key = result.lat + "_" + result.lon;
-                            if (!uniqueLocations.has(key)) {
-                                uniqueLocations.set(key, []);
-                            }
-                            uniqueLocations.get(key).push(result);
-                            count++;
-                        }
-                    });
-                }
+    <script>
+    // Make these global so the table's onclick handlers can use them
+    let map;
+    const markersByKey = Object.create(null);
 
-                uniqueLocations.forEach((entries, key) => {
-                    const lat = entries[0].lat;
-                    const lon = entries[0].lon;
-                    const popupContent = entries.map(e =>
-                        `<strong>${e.Nimi}</strong> (${e.Language})<br><em>${e.kunta}</em>`
-                    ).join('<hr>');
-                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
-                });
-            });
-        </script>
+    function keyFor(lat, lon) {
+        return Number(lat).toFixed(6) + "_" + Number(lon).toFixed(6);
+    }
+
+    function scrollToMap() {
+        const el = document.getElementById('map');
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 700);
+    }
+
+    function focusMarkerAndScroll(key) {
+        scrollToMap();
+
+        const m = markersByKey[key];
+        if (!m) return;
+        const latlng = m.getLatLng();
+
+        // wait a beat for the scroll, then center & open popup
+        setTimeout(() => {
+        map.invalidateSize(); // if layout changed during scroll
+
+        const targetZoom = Math.max(map.getZoom(), 16);
+        map.flyTo(latlng, targetZoom, { animate: true, duration: 0.5 });
+
+        map.once('moveend', () => {
+            // open without autoPan so Leaflet doesn't shove the view
+            m.openPopup({ autoPan: false });
+            // keep the marker centered even with the popup
+            setTimeout(() => map.panTo(latlng, { animate: true }), 50);
+        });
+        }, 350);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // results is provided by Flask render_template(...)
+        const results = {{ results | tojson | safe }};
+
+        // Flatten all method arrays into one list
+        const all = Object.values(results).flat();
+
+        // Only points with valid numeric lat/lon
+        const points = all.filter(p =>
+        typeof p.lat === 'number' && typeof p.lon === 'number' &&
+        isFinite(p.lat) && isFinite(p.lon)
+        );
+
+        if (points.length === 0) {
+        // No mappable points: hide map and bail
+        const m = document.getElementById('map');
+        if (m) m.style.display = 'none';
+        console.warn('No mappable points (lat/lon missing or invalid).');
+        return;
+        }
+
+        // Create the map
+        map = L.map('map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Group same coordinates (e.g., suomi/ruotsi at same spot)
+        const groups = new Map();
+        points.forEach(p => {
+        const k = keyFor(p.lat, p.lon);
+        if (!groups.has(k)) groups.set(k, { lat: p.lat, lon: p.lon, rows: [] });
+        groups.get(k).rows.push(p);
+        });
+
+        // Add markers and remember them by key
+        const bounds = L.latLngBounds();
+        groups.forEach((g, k) => {
+        const popupHtml = g.rows.map(e =>
+            `<strong>${e.Nimi ?? e.nimi_suomi ?? ''}</strong> (${e.Language ?? ''})<br><em>${e.kunta ?? ''}</em>`
+        ).join('<hr>');
+
+        const marker = L.marker([g.lat, g.lon]).addTo(map).bindPopup(popupHtml);
+        markersByKey[k] = marker;
+        bounds.extend([g.lat, g.lon]);
+        });
+
+        // Fit map to show all markers
+        map.fitBounds(bounds.pad(0.2));
+    });
+    </script>
+
+
     {% endif %}
 
     <br>
