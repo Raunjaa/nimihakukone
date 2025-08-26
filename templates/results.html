@@ -84,13 +84,13 @@
                             <td>
                                 {% if show_map and result.get("lat") and result.get("lon") %}
                                     <a href="#map"
-                                    onclick="focusMarkerAndScroll('{{ ('%.6f'|format(result['lat'])) }}_{{ ('%.6f'|format(result['lon'])) }}'); return false;">
+                                    onclick="focusMarkerAndScroll('{{ ('%.6f'|format(result['lon'])) }}_{{ ('%.6f'|format(result['lat'])) }}'); return false;">
                                     {{ result["Nimi"] }}
                                     </a>
                                 {% else %}
-                                    {{ result["Nimi"] }}
+                                    {{ result["Nimi"] }} <span style="color: gray; font-size: 0.9em;">(ei karttasijaintia)</span>
                                 {% endif %}
-                                </td>
+                            </td>
                             <td>{{ result["kunta"] }}</td>
                             <td>{{ result["Language"] }}</td>
                             {% if method == "Sumea" %}

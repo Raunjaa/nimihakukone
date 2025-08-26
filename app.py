@@ -10,7 +10,7 @@ from pyproj import Transformer
 app = Flask(__name__)
 
 # CSV source
-csv_file = "hgin_ja_vantaan_nimet_7_8_25.csv"
+csv_file = "kaikki_26_8_25.csv"
 
 # Load data
 try:
